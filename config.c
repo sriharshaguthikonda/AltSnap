@@ -26,6 +26,99 @@ INT_PTR CALLBACK AdvancedPageDialogProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK FindWindowProc(HWND, UINT, WPARAM, LPARAM);
 
 HWND g_cfgwnd = NULL;
+static BOOL g_dark_mode = FALSE;
+static HBRUSH g_dark_brush = NULL;
+static HBRUSH g_dark_edit_brush = NULL;
+static const COLORREF g_dark_bg = RGB(32, 32, 32);
+static const COLORREF g_dark_edit_bg = RGB(48, 48, 48);
+static const COLORREF g_dark_text = RGB(230, 230, 230);
+
+static void ResetDarkModeBrushes(void)
+{
+    if (g_dark_brush) {
+        DeleteObject(g_dark_brush);
+        g_dark_brush = NULL;
+    }
+    if (g_dark_edit_brush) {
+        DeleteObject(g_dark_edit_brush);
+        g_dark_edit_brush = NULL;
+    }
+}
+
+static void SetDarkModeBrushes(BOOL dark)
+{
+    if (g_dark_mode == dark && (dark ? g_dark_brush != NULL : TRUE)) {
+        return;
+    }
+    ResetDarkModeBrushes();
+    g_dark_mode = dark;
+    if (dark) {
+        g_dark_brush = CreateSolidBrush(g_dark_bg);
+        g_dark_edit_brush = CreateSolidBrush(g_dark_edit_bg);
+    }
+}
+
+static void ApplyWindowTheme(HWND hwnd)
+{
+    typedef HRESULT (WINAPI *set_theme_t)(HWND, LPCWSTR, LPCWSTR);
+    static set_theme_t set_theme = (set_theme_t)IPTR;
+    if (set_theme == (set_theme_t)IPTR) {
+        set_theme = (set_theme_t)LoadDLLProc("UXTHEME.DLL", "SetWindowTheme");
+    }
+    if (!set_theme) return;
+    if (g_dark_mode) {
+        set_theme(hwnd, L"DarkMode_Explorer", NULL);
+    } else {
+        set_theme(hwnd, L"", L"");
+    }
+}
+
+static BOOL CALLBACK ApplyWindowThemeToChildren(HWND hwnd, LPARAM lParam)
+{
+    (void)lParam;
+    ApplyWindowTheme(hwnd);
+    return TRUE;
+}
+
+static void UpdateDarkModeForWindow(HWND hwnd)
+{
+    BOOL dark = AllowDarkTitlebar(g_cfgwnd ? g_cfgwnd : hwnd);
+    SetDarkModeBrushes(dark);
+    ApplyWindowTheme(hwnd);
+    EnumChildWindows(hwnd, ApplyWindowThemeToChildren, 0);
+    InvalidateRect(hwnd, NULL, TRUE);
+}
+
+static INT_PTR HandleDarkModeDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    (void)lParam;
+    switch (msg) {
+    case WM_INITDIALOG:
+        UpdateDarkModeForWindow(hwnd);
+        break;
+    case WM_SETTINGCHANGE:
+    case WM_THEMECHANGED:
+    case WM_SYSCOLORCHANGE:
+        UpdateDarkModeForWindow(hwnd);
+        break;
+    case WM_CTLCOLORDLG:
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLORBTN:
+    case WM_CTLCOLORLISTBOX:
+    case WM_CTLCOLOREDIT: {
+        if (!g_dark_mode) break;
+        HDC hdc = (HDC)wParam;
+        SetTextColor(hdc, g_dark_text);
+        if (msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORLISTBOX) {
+            SetBkColor(hdc, g_dark_edit_bg);
+            return (INT_PTR)g_dark_edit_brush;
+        }
+        SetBkColor(hdc, g_dark_bg);
+        return (INT_PTR)g_dark_brush;
+    } break;
+    }
+    return 0;
+}
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -264,6 +357,7 @@ BOOL CALLBACK PropSheetProc(HWND hwnd, UINT msg, LPARAM lParam)
     if (msg == PSCB_INITIALIZED) {
         g_cfgwnd = hwnd;
         UpdateStrings();
+        UpdateDarkModeForWindow(hwnd);
 
         // Set new icon specifically for the taskbar and Alt+Tab, without changing window icon
         HICON taskbar_icon = (HICON)LoadImageA(g_hinst, "APP_ICON", IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
@@ -489,6 +583,8 @@ static void ShowContextHelp(const struct dialogstring sl[], size_t len, HWND hwn
 /////////////////////////////////////////////////////////////////////////////
 INT_PTR CALLBACK GeneralPageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    INT_PTR dark_result = HandleDarkModeDialogProc(hwnd, msg, wParam, lParam);
+    if (dark_result) return dark_result;
     #define V (void *)
     // Options to bead or written...
     static const struct optlst optlst[] = {
@@ -812,6 +908,8 @@ static void WriteActionDropListS(HWND hwnd, int idc, TCHAR *inioption, const str
 /////////////////////////////////////////////////////////////////////////////
 INT_PTR CALLBACK MousePageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    INT_PTR dark_result = HandleDarkModeDialogProc(hwnd, msg, wParam, lParam);
+    if (dark_result) return dark_result;
     static int have_to_apply = 0;
     // Mouse actions
     static const struct {
@@ -1117,6 +1215,8 @@ static LRESULT WINAPI PickShortcutWinProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
 /////////////////////////////////////////////////////////////////////////////
 INT_PTR CALLBACK KeyboardPageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    INT_PTR dark_result = HandleDarkModeDialogProc(hwnd, msg, wParam, lParam);
+    if (dark_result) return dark_result;
     static int have_to_apply = 0;
     static int edit_shortcut_idx = 0;
     // Hotkeys
@@ -1433,6 +1533,8 @@ INT_PTR CALLBACK KeyboardPageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 /////////////////////////////////////////////////////////////////////////////
 INT_PTR CALLBACK BlacklistPageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    INT_PTR dark_result = HandleDarkModeDialogProc(hwnd, msg, wParam, lParam);
+    if (dark_result) return dark_result;
     #pragma GCC diagnostic ignored "-Wint-conversion"
     static const struct optlst optlst[] = {
         { IDC_PROCESSBLACKLIST, T_STR, 0, TEXT("Blacklist"), "Processes", TEXT("") },
@@ -1594,6 +1696,8 @@ LRESULT CALLBACK FindWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 /////////////////////////////////////////////////////////////////////////////
 INT_PTR CALLBACK AboutPageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    INT_PTR dark_result = HandleDarkModeDialogProc(hwnd, msg, wParam, lParam);
+    if (dark_result) return dark_result;
     if (msg == WM_INITDIALOG) {
         MoveToCorner(g_cfgwnd);
     } else if (msg == WM_NOTIFY) {
@@ -1668,13 +1772,19 @@ LRESULT CALLBACK TestWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
     switch (msg) {
     case WM_CREATE: {
-        // uDarkMode = AllowDarkTitlebar(hwnd);
+        uDarkMode = AllowDarkTitlebar(hwnd);
 
         // Allocate sace for the list of last keys.
         void *lastkeys = calloc(1, sizeof(struct lastkeyss));
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)lastkeys);
 
         } break;
+    case WM_SETTINGCHANGE:
+    case WM_THEMECHANGED:
+    case WM_SYSCOLORCHANGE: {
+        uDarkMode = AllowDarkTitlebar(hwnd);
+        InvalidateRect(hwnd, NULL, TRUE);
+    } break;
 
     case WM_KEYDOWN:
 
@@ -1998,6 +2108,8 @@ static HWND NewTestWindowAt(int x, int y, int width, int height)
 /////////////////////////////////////////////////////////////////////////////
 INT_PTR CALLBACK AdvancedPageDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    INT_PTR dark_result = HandleDarkModeDialogProc(hwnd, msg, wParam, lParam);
+    if (dark_result) return dark_result;
     #define V (void *)
     static const struct optlst optlst[] = {
         { IDC_AUTOREMAXIMIZE,   T_BOL, 0, TEXT("Advanced"), "AutoRemaximize", V 0 },
