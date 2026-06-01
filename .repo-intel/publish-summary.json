@@ -1,0 +1,39 @@
+﻿{
+    "schemaVersion":  "repo-map-artifact-branch/v1",
+    "repo":  "sriharshaguthikonda/AltSnap",
+    "generatedAt":  "2026-06-01T06:16:12.2798013Z",
+    "source":  "Repo_maps GitHub footprint publish runner",
+    "publishBranch":  "repo-intel-artifacts",
+    "mapCount":  4,
+    "totalBytes":  2475831,
+    "maps":  [
+                 {
+                     "name":  "Add-Aligned-edge-stycky-resize-mode",
+                     "ref":  "refs/remotes/origin/Add-Aligned-edge-stycky-resize-mode",
+                     "commit":  "6f9e65ab541e9de28d6f8b89d7f51c766875b268",
+                     "path":  ".repo-intel/branches/remote-origin/add-aligned-edge-stycky-resize-mode__6f9e65ab541e/repo-map-full.json",
+                     "bytes":  694581
+                 },
+                 {
+                     "name":  "RamonUnch-1.46.1",
+                     "ref":  "refs/remotes/origin/RamonUnch-1.46.1",
+                     "commit":  "da3ac6b6ab35ffb62ec43357f31654d03eb89bef",
+                     "path":  ".repo-intel/branches/remote-origin/ramonunch-1-46-1__da3ac6b6ab35/repo-map-full.json",
+                     "bytes":  336282
+                 },
+                 {
+                     "name":  "codex/add-dark-mode-support-for-windows-theme",
+                     "ref":  "refs/remotes/origin/codex/add-dark-mode-support-for-windows-theme",
+                     "commit":  "f4f89f265543ee71f02ba7116bec9af9e80e45f2",
+                     "path":  ".repo-intel/branches/remote-origin/codex-add-dark-mode-support-for-windows-theme__f4f89f265543/repo-map-full.json",
+                     "bytes":  716454
+                 },
+                 {
+                     "name":  "main",
+                     "ref":  "refs/remotes/origin/main",
+                     "commit":  "1393f6373bb6e3deaea1f71f87602861457d7f38",
+                     "path":  ".repo-intel/branches/remote-origin/main__1393f6373bb6/repo-map-full.json",
+                     "bytes":  712725
+                 }
+             ]
+}
